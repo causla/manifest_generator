@@ -547,7 +547,7 @@ const generateManifest = () => {
       dependencies: [],
       subpacks: []
     };
-    if (metaEnabled && Object.keys(metaData).length > 0) bpManifest.metadata = metaData;
+    if (metaEnabled && Object.keys(metaData).length > 0) bpManifest.metadata = { "product_type": "addon", ...metaData };
     if (scriptsEnabled) Array.from(document.querySelectorAll('.module-select')).forEach(select => select.value !== 'None' && bpManifest.dependencies.push({ module_name: select.dataset.module, version: select.value }));
     if (linkDeps && rpEnabled) bpManifest.dependencies.push({ uuid: rpUUID, version: versionParts });
     bpManifest.dependencies.push(...bpCustomDeps.map(dep => ({ uuid: dep.uuid, version: dep.version.split('.').map(Number) })));
