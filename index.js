@@ -183,6 +183,7 @@ const checkUUIDs = () => {
         tooltip = document.createElement('div');
         tooltip.className = 'tooltip';
         tooltip.textContent = 'Invalid UUID format';
+        dep.parentElement.style.position = 'relative';
         dep.parentElement.appendChild(tooltip);
       }
       tooltip.classList.remove('hidden');
@@ -203,6 +204,7 @@ const checkUUIDs = () => {
         tooltip = document.createElement('div');
         tooltip.className = 'tooltip';
         tooltip.textContent = 'Invalid UUID format';
+        dep.parentElement.style.position = 'relative';
         dep.parentElement.appendChild(tooltip);
       }
       tooltip.classList.remove('hidden');
@@ -214,268 +216,273 @@ const checkUUIDs = () => {
     }
   });
   
-  document.getElementById('generateBtn').disabled = bothDisabled ? bothDisabled : !isValid;
-  return isValid;
+  const errorMsg = document.getElementById('errorMessage');
+  if (!isValid) {
+    errorMsg.textContent = 'Please fix the invalid UUIDs above before generating.';
+    errorMsg.classList.remove('hidden');
+  } else if (bothDisabled) {
+    errorMsg.textContent = 'Please enable at least one pack before generating.';
+    errorMsg.classList.remove('hidden');
+  } else {
+    errorMsg.classList.add('hidden');
+  }
+  
+  return isValid && !bothDisabled;
+};
+
+const addSubpack = (containerId) => {
+  const container = document.getElementById(containerId);
+  const item = document.createElement('div');
+  item.className = 'subpack-item';
+  item.innerHTML = `
+    <input type="text" class="subpack-folder" placeholder="Folder name" />
+    <input type="text" class="subpack-name" placeholder="Subpack Name" />
+    <select class="subpack-tier">
+      <option value="0">0 (Lowest)</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4 (Highest)</option>
+    </select>
+    <button class="remove-btn" onclick="this.parentElement.remove(); saveData();">✕</button>
+  `;
+  item.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('change', saveData);
+    el.addEventListener('input', saveData);
+  });
+  container.appendChild(item);
+  saveData();
+};
+
+const addCustomDep = (containerId) => {
+  const container = document.getElementById(containerId);
+  const item = document.createElement('div');
+  item.className = 'dependency-item';
+  item.innerHTML = `
+    <input type="text" class="dep-name" placeholder="Description (optional)" />
+    <input type="text" class="dep-uuid" placeholder="UUID" />
+    <input type="text" class="dep-version" placeholder="Version (e.g. 1.0.0)" value="1.0.0" />
+    <button class="remove-btn" onclick="this.parentElement.remove(); saveData(); checkUUIDs();">✕</button>
+  `;
+  item.querySelectorAll('input').forEach(el => {
+    el.addEventListener('change', () => {
+      saveData();
+      checkUUIDs();
+    });
+    el.addEventListener('input', () => {
+      saveData();
+      checkUUIDs();
+    });
+  });
+  container.appendChild(item);
+  saveData();
+  checkUUIDs();
+};
+
+const addAuthor = () => {
+  const container = document.getElementById('metaAuthorsContainer');
+  const item = document.createElement('div');
+  item.className = 'author-item';
+  item.innerHTML = `
+    <input type="text" class="author-name" placeholder="Author name" />
+    <button class="remove-btn" onclick="this.parentElement.remove(); saveData();">✕</button>
+  `;
+  item.querySelector('input').addEventListener('change', saveData);
+  item.querySelector('input').addEventListener('input', saveData);
+  container.appendChild(item);
+  saveData();
+};
+
+const addTool = () => {
+  const container = document.getElementById('metaToolsContainer');
+  const item = document.createElement('div');
+  item.className = 'tool-item';
+  item.innerHTML = `
+    <input type="text" class="tool-name" placeholder="Tool name" />
+    <input type="text" class="tool-version" placeholder="Version" />
+    <button class="remove-btn" onclick="this.parentElement.remove(); saveData();">✕</button>
+  `;
+  item.querySelectorAll('input').forEach(el => {
+    el.addEventListener('change', saveData);
+    el.addEventListener('input', saveData);
+  });
+  container.appendChild(item);
+  saveData();
+};
+
+const createModuleSelectors = (savedVersions = {}) => {
+  const container = document.getElementById('moduleSelectorsContainer');
+  container.innerHTML = '';
+  Object.keys(MODULES).forEach(module => {
+    const versions = loadedModuleVersions[module] || MODULES[module];
+    const savedVersion = savedVersions[module] || 'None';
+    const div = document.createElement('div');
+    div.className = 'module-selector';
+    div.innerHTML = `
+      <label>${module}</label>
+      <select class="module-select" data-module="${module}">
+        ${versions.map(v => `<option value="${v}" ${v === savedVersion ? 'selected' : ''}>${v}</option>`).join('')}
+      </select>
+    `;
+    div.querySelector('select').addEventListener('change', saveData);
+    container.appendChild(div);
+  });
 };
 
 const updatePanelStates = () => {
   const bpEnabled = document.getElementById('bpToggle').checked;
   const rpEnabled = document.getElementById('rpToggle').checked;
   const metaEnabled = document.getElementById('metaToggle').checked;
-  const bothDisabled = (!bpEnabled && !rpEnabled);
-  
-  const bpFields = document.getElementById('bpFields');
-  bpFields.classList.toggle('panel-content-disabled', !bpEnabled);
-  document.querySelector('.bp-panel .panel-header').classList.toggle('disabled', !bpEnabled);
-  
-  const rpFields = document.getElementById('rpFields');
-  rpFields.classList.toggle('panel-content-disabled', !rpEnabled);
-  document.querySelector('.rp-panel .panel-header').classList.toggle('disabled', !rpEnabled);
-  
-  const metaFields = document.getElementById('metaFields');
-  metaFields.classList.toggle('panel-content-disabled', bothDisabled || !metaEnabled);
-  document.querySelector('.meta-panel .panel-header').classList.toggle('disabled', bothDisabled || !metaEnabled);
-  
-  document.getElementById('metaToggle').disabled = bothDisabled;
-  document.getElementById('dependenciesToggle').disabled = !(bpEnabled && rpEnabled);
-  
-  document.getElementById('bpUuidTooltip').classList.toggle('disabled', !bpEnabled);
-  document.querySelectorAll('#bpCustomDepsContainer .tooltip').forEach(tooltip => tooltip.classList.toggle('disabled', !bpEnabled));
-  
-  document.getElementById('rpUuidTooltip').classList.toggle('disabled', !rpEnabled);
-  document.querySelectorAll('#rpCustomDepsContainer .tooltip').forEach(tooltip => tooltip.classList.toggle('disabled', !rpEnabled));
-};
-
-const createModuleSelectors = (selectedVersions = {}) => {
-  const container = document.getElementById('bpScriptModules');
-  container.innerHTML = Object.entries(MODULES).map(([module, versions]) => `
-    <div class="module-selector">
-      <label>${module}</label>
-      <select class="module-select" data-module="${module}">
-        ${versions.map(v => `<option value="${v}" ${selectedVersions[module] === v ? 'selected' : ''}>${v}</option>`).join('')}
-      </select>
-    </div>
-  `).join('');
-  container.querySelectorAll('.module-select').forEach(select => {
-    select.addEventListener('change', saveData);
-  });
-};
-
-const addSubpack = (containerId, data = {}) => {
-  const container = document.getElementById(containerId);
-  const subpackDiv = document.createElement('div');
-  subpackDiv.className = 'item subpack-item';
-  subpackDiv.innerHTML = `
-    <button class="item-remove remove-subpack" title="Remove subpack">×</button>
-    <div class="item-grid">
-      <div class="input-container">
-        <input type="text" class="subpack-name" placeholder=" " value="${data.name || ''}">
-        <label>Name</label>
-      </div>
-      <div class="input-container">
-        <input type="text" class="subpack-folder" placeholder=" " value="${data.folder || ''}">
-        <label>Folder name</label>
-      </div>
-      <div class="input-container">
-        <input type="number" class="subpack-tier" placeholder=" " min="0" value="${data.tier || 0}">
-        <label>Memory tier</label>
-      </div>
-    </div>
-  `;
-  container.appendChild(subpackDiv);
-  subpackDiv.querySelectorAll('input').forEach(input => {
-    input.addEventListener('change', saveData);
-    input.addEventListener('input', saveData);
-  });
-  subpackDiv.querySelector('.remove-subpack').addEventListener('click', () => {
-    container.removeChild(subpackDiv);
-    saveData();
-  });
-};
-
-const addCustomDep = (containerId, data = {}) => {
-  const container = document.getElementById(containerId);
-  const depDiv = document.createElement('div');
-  depDiv.className = 'item dependency-item';
-  depDiv.innerHTML = `
-    <button class="item-remove remove-dep" title="Remove dependency">×</button>
-    <div class="item-grid">
-      <div class="input-container">
-        <input type="text" class="dep-uuid" placeholder=" " value="${data.uuid || ''}">
-        <label>UUID</label>
-      </div>
-      <div class="input-container">
-        <input type="text" class="dep-version" placeholder=" " value="${data.version || '1.0.0'}">
-        <label>Version</label>
-      </div>
-      <div class="input-container">
-        <input type="text" class="dep-name" placeholder=" " value="${data.name || ''}">
-        <label>Description (optional)</label>
-      </div>
-    </div>
-  `;
-  container.appendChild(depDiv);
-  depDiv.querySelectorAll('input').forEach(input => {
-    input.addEventListener('change', saveData);
-    input.addEventListener('input', saveData);
-  });
-  depDiv.querySelector('.remove-dep').addEventListener('click', () => {
-    container.removeChild(depDiv);
-    saveData();
-  });
-};
-
-const addAuthor = (name = '') => {
-  const container = document.getElementById('metaAuthorsContainer');
-  const authorDiv = document.createElement('div');
-  authorDiv.className = 'item author-item';
-  authorDiv.innerHTML = `
-    <button class="item-remove remove-author" title="Remove author">×</button>
-    <div class="item-grid">
-      <div class="input-container">
-        <input type="text" class="author-name" placeholder=" " value="${name}">
-        <label>Author name</label>
-      </div>
-    </div>
-  `;
-  container.appendChild(authorDiv);
-  authorDiv.querySelector('input').addEventListener('change', saveData);
-  authorDiv.querySelector('input').addEventListener('input', saveData);
-  authorDiv.querySelector('.remove-author').addEventListener('click', () => {
-    container.removeChild(authorDiv);
-    saveData();
-  });
-};
-
-const addTool = (data = {}) => {
-  const container = document.getElementById('metaToolsContainer');
-  const toolDiv = document.createElement('div');
-  toolDiv.className = 'item tool-item';
-  toolDiv.innerHTML = `
-    <button class="item-remove remove-tool" title="Remove tool">×</button>
-    <div class="item-grid">
-      <div class="input-container">
-        <input type="text" maxLength="32" class="tool-name" placeholder=" " value="${data.name || ''}">
-        <label>Tool name</label>
-      </div>
-      <div class="input-container">
-        <input type="text" class="tool-version" placeholder=" " value="${data.version || ''}">
-        <label>Version</label>
-      </div>
-    </div>
-  `;
-  container.appendChild(toolDiv);
-  toolDiv.querySelectorAll('input').forEach(input => {
-    input.addEventListener('change', saveData);
-    input.addEventListener('input', saveData);
-  });
-  toolDiv.querySelector('.remove-tool').addEventListener('click', () => {
-    container.removeChild(toolDiv);
-    saveData();
-  });
+  document.getElementById('bpPanel').classList.toggle('disabled', !bpEnabled);
+  document.getElementById('rpPanel').classList.toggle('disabled', !rpEnabled);
+  document.getElementById('metaPanel').classList.toggle('disabled', !metaEnabled);
+  document.getElementById('bpOutput').classList.toggle('hidden', !bpEnabled);
+  document.getElementById('rpOutput').classList.toggle('hidden', !rpEnabled);
+  checkUUIDs();
 };
 
 const saveData = () => {
+  const bpEnabled = document.getElementById('bpToggle').checked;
+  const rpEnabled = document.getElementById('rpToggle').checked;
+  const metaEnabled = document.getElementById('metaToggle').checked;
   const data = {
-    meta: {
-      enabled: document.getElementById('metaToggle').checked,
-      license: document.getElementById('metaLicense').value,
-      url: document.getElementById('metaUrl').value,
-      authors: Array.from(document.querySelectorAll('#metaAuthorsContainer .author-item')).map(item => 
-        item.querySelector('.author-name').value.trim()
-      ).filter(name => name),
-      tools: Array.from(document.querySelectorAll('#metaToolsContainer .tool-item')).map(item => ({
-        name: item.querySelector('.tool-name').value.trim(),
-        version: item.querySelector('.tool-version').value.trim()
-      })).filter(tool => tool.name || tool.version)
-    },
     bp: {
-      enabled: document.getElementById('bpToggle').checked,
+      enabled: bpEnabled,
       name: document.getElementById('bpName').value,
       desc: document.getElementById('bpDesc').value,
       uuid: document.getElementById('bpUuid').value,
       minEngine: document.getElementById('bpMinEngine').value,
       scriptsEnabled: document.getElementById('bpScriptsToggle').checked,
       scriptLocation: document.getElementById('scriptLocation').value,
+      subpacks: Array.from(document.querySelectorAll('#bpSubpacksContainer .subpack-item')).map(item => ({
+        folder: item.querySelector('.subpack-folder').value,
+        name: item.querySelector('.subpack-name').value,
+        tier: item.querySelector('.subpack-tier').value
+      })),
+      customDeps: Array.from(document.querySelectorAll('#bpCustomDepsContainer .dependency-item')).map(item => ({
+        name: item.querySelector('.dep-name').value,
+        uuid: item.querySelector('.dep-uuid').value,
+        version: item.querySelector('.dep-version').value
+      })),
       moduleVersions: Array.from(document.querySelectorAll('.module-select')).reduce((acc, select) => {
         acc[select.dataset.module] = select.value;
         return acc;
-      }, {}),
-      subpacks: Array.from(document.querySelectorAll('#bpSubpacksContainer .subpack-item')).map(item => ({
-        name: item.querySelector('.subpack-name').value,
-        folder: item.querySelector('.subpack-folder').value,
-        tier: parseInt(item.querySelector('.subpack-tier').value) || 0
-      })),
-      customDeps: Array.from(document.querySelectorAll('#bpCustomDepsContainer .dependency-item')).map(item => ({
-        uuid: item.querySelector('.dep-uuid').value.trim(),
-        version: item.querySelector('.dep-version').value.trim() || '1.0.0',
-        name: item.querySelector('.dep-name').value.trim()
-      })).filter(dep => dep.uuid)
+      }, {})
     },
     rp: {
-      enabled: document.getElementById('rpToggle').checked,
+      enabled: rpEnabled,
       name: document.getElementById('rpName').value,
       desc: document.getElementById('rpDesc').value,
       uuid: document.getElementById('rpUuid').value,
       minEngine: document.getElementById('rpMinEngine').value,
       subpacks: Array.from(document.querySelectorAll('#rpSubpacksContainer .subpack-item')).map(item => ({
-        name: item.querySelector('.subpack-name').value,
         folder: item.querySelector('.subpack-folder').value,
-        tier: parseInt(item.querySelector('.subpack-tier').value) || 0
+        name: item.querySelector('.subpack-name').value,
+        tier: item.querySelector('.subpack-tier').value
       })),
       customDeps: Array.from(document.querySelectorAll('#rpCustomDepsContainer .dependency-item')).map(item => ({
-        uuid: item.querySelector('.dep-uuid').value.trim(),
-        version: item.querySelector('.dep-version').value.trim() || '1.0.0',
-        name: item.querySelector('.dep-name').value.trim()
-      })).filter(dep => dep.uuid)
+        name: item.querySelector('.dep-name').value,
+        uuid: item.querySelector('.dep-uuid').value,
+        version: item.querySelector('.dep-version').value
+      }))
     },
-    linkDeps: document.getElementById('dependenciesToggle').checked
+    meta: {
+      enabled: metaEnabled,
+      authors: Array.from(document.querySelectorAll('#metaAuthorsContainer .author-item')).map(item => item.querySelector('.author-name').value),
+      license: document.getElementById('metaLicense').value,
+      url: document.getElementById('metaUrl').value,
+      tools: Array.from(document.querySelectorAll('#metaToolsContainer .tool-item')).map(item => ({
+        name: item.querySelector('.tool-name').value,
+        version: item.querySelector('.tool-version').value
+      }))
+    },
+    dependencies: document.getElementById('dependenciesToggle').checked
   };
   localStorage.setItem('minecraftManifestData', JSON.stringify(data));
-  checkUUIDs();
 };
 
 const loadData = async () => {
   const savedData = localStorage.getItem('minecraftManifestData');
   if (!savedData) return;
-  const data = JSON.parse(savedData);
-  document.getElementById('metaToggle').checked = data.meta?.enabled ?? true;
-  document.getElementById('metaLicense').value = data.meta?.license || '';
-  document.getElementById('metaUrl').value = data.meta?.url || '';
-  document.getElementById('metaAuthorsContainer').innerHTML = '';
-  data.meta?.authors?.forEach(author => addAuthor(author));
-  document.getElementById('metaToolsContainer').innerHTML = '';
-  data.meta?.tools?.forEach(tool => addTool(tool));
-  document.getElementById('bpToggle').checked = data.bp?.enabled ?? true;
-  document.getElementById('bpName').value = data.bp?.name || 'My Behavior Pack';
-  document.getElementById('bpDesc').value = data.bp?.desc || 'My awesome behavior pack';
-  document.getElementById('bpUuid').value = data.bp?.uuid || '';
-  document.getElementById('bpMinEngine').value = data.bp?.minEngine || '1.21.60';
-  document.getElementById('bpScriptsToggle').checked = data.bp?.scriptsEnabled ?? false;
-  document.getElementById('scriptLocation').value = data.bp?.scriptLocation || 'scripts/main.js';
-  document.getElementById('bpSubpacksContainer').innerHTML = '';
-  data.bp?.subpacks?.forEach(subpack => addSubpack('bpSubpacksContainer', subpack));
-  document.getElementById('bpCustomDepsContainer').innerHTML = '';
-  data.bp?.customDeps?.forEach(dep => addCustomDep('bpCustomDepsContainer', dep));
-  document.getElementById('rpToggle').checked = data.rp?.enabled ?? true;
-  document.getElementById('rpName').value = data.rp?.name || 'My Resource Pack';
-  document.getElementById('rpDesc').value = data.rp?.desc || 'My awesome resource pack';
-  document.getElementById('rpUuid').value = data.rp?.uuid || '';
-  document.getElementById('rpMinEngine').value = data.rp?.minEngine || '1.21.60';
-  document.getElementById('rpSubpacksContainer').innerHTML = '';
-  data.rp?.subpacks?.forEach(subpack => addSubpack('rpSubpacksContainer', subpack));
-  document.getElementById('rpCustomDepsContainer').innerHTML = '';
-  data.rp?.customDeps?.forEach(dep => addCustomDep('rpCustomDepsContainer', dep));
-  document.getElementById('dependenciesToggle').checked = data.linkDeps ?? false;
-  document.getElementById('scriptLocationContainer').style.display = data.bp?.scriptsEnabled ? 'block' : 'none';
-  if (data.bp?.scriptsEnabled) {
-    try {
-      await Promise.all(Object.keys(MODULES).map(module => fetchModuleVersions(module)));
-      createModuleSelectors(data.bp?.moduleVersions || {});
-      document.getElementById('bpScriptModules').classList.remove('hidden');
-    } catch (error) {
-      console.error("Error loading module versions:", error);
+  try {
+    const data = JSON.parse(savedData);
+    if (data.bp) {
+      document.getElementById('bpToggle').checked = data.bp.enabled ?? true;
+      document.getElementById('bpName').value = data.bp.name || '';
+      document.getElementById('bpDesc').value = data.bp.desc || '';
+      document.getElementById('bpUuid').value = data.bp.uuid || '';
+      document.getElementById('bpScriptsToggle').checked = data.bp.scriptsEnabled ?? false;
+      document.getElementById('scriptLocation').value = data.bp.scriptLocation || 'scripts/main.js';
+      document.getElementById('scriptLocationContainer').style.display = data.bp.scriptsEnabled ? 'block' : 'none';
+      data.bp.subpacks?.forEach(sp => {
+        addSubpack('bpSubpacksContainer');
+        const item = document.querySelector('#bpSubpacksContainer .subpack-item:last-child');
+        item.querySelector('.subpack-folder').value = sp.folder || '';
+        item.querySelector('.subpack-name').value = sp.name || '';
+        item.querySelector('.subpack-tier').value = sp.tier || '0';
+      });
+      data.bp.customDeps?.forEach(dep => {
+        addCustomDep('bpCustomDepsContainer');
+        const item = document.querySelector('#bpCustomDepsContainer .dependency-item:last-child');
+        item.querySelector('.dep-name').value = dep.name || '';
+        item.querySelector('.dep-uuid').value = dep.uuid || '';
+        item.querySelector('.dep-version').value = dep.version || '1.0.0';
+      });
     }
+    if (data.rp) {
+      document.getElementById('rpToggle').checked = data.rp.enabled ?? false;
+      document.getElementById('rpName').value = data.rp.name || '';
+      document.getElementById('rpDesc').value = data.rp.desc || '';
+      document.getElementById('rpUuid').value = data.rp.uuid || '';
+      data.rp.subpacks?.forEach(sp => {
+        addSubpack('rpSubpacksContainer');
+        const item = document.querySelector('#rpSubpacksContainer .subpack-item:last-child');
+        item.querySelector('.subpack-folder').value = sp.folder || '';
+        item.querySelector('.subpack-name').value = sp.name || '';
+        item.querySelector('.subpack-tier').value = sp.tier || '0';
+      });
+      data.rp.customDeps?.forEach(dep => {
+        addCustomDep('rpCustomDepsContainer');
+        const item = document.querySelector('#rpCustomDepsContainer .dependency-item:last-child');
+        item.querySelector('.dep-name').value = dep.name || '';
+        item.querySelector('.dep-uuid').value = dep.uuid || '';
+        item.querySelector('.dep-version').value = dep.version || '1.0.0';
+      });
+    }
+    if (data.meta) {
+      document.getElementById('metaToggle').checked = data.meta.enabled ?? false;
+      document.getElementById('metaLicense').value = data.meta.license || '';
+      document.getElementById('metaUrl').value = data.meta.url || '';
+      data.meta.authors?.forEach(author => {
+        if (author) {
+          addAuthor();
+          const item = document.querySelector('#metaAuthorsContainer .author-item:last-child');
+          item.querySelector('.author-name').value = author;
+        }
+      });
+      data.meta.tools?.forEach(tool => {
+        if (tool.name && tool.version) {
+          addTool();
+          const item = document.querySelector('#metaToolsContainer .tool-item:last-child');
+          item.querySelector('.tool-name').value = tool.name;
+          item.querySelector('.tool-version').value = tool.version;
+        }
+      });
+    }
+    if (data.dependencies !== undefined) {
+      document.getElementById('dependenciesToggle').checked = data.dependencies;
+    }
+    if (data.bp?.scriptsEnabled) {
+      try {
+        await Promise.all(Object.keys(MODULES).map(module => fetchModuleVersions(module)));
+        createModuleSelectors(data.bp?.moduleVersions || {});
+        document.getElementById('bpScriptModules').classList.remove('hidden');
+      } catch (error) {
+        console.error("Error loading module versions:", error);
+      }
+    }
+  } catch (e) {
+    console.error("Error loading saved data:", e);
   }
   updatePanelStates();
   checkUUIDs();
@@ -523,7 +530,6 @@ const generateManifest = () => {
     const engineParts = minEngineVersion.split('.').map(Number);
     const bpManifest = {
       format_version: 2,
-      metadata: {"product_type":"addon"},
       header: {
         name: document.getElementById('bpName').value || 'My Behavior Pack',
         description: document.getElementById('bpDesc').value || 'My awesome behavior pack',
@@ -547,8 +553,11 @@ const generateManifest = () => {
       dependencies: [],
       subpacks: []
     };
+    // ALWAYS set product_type to "addon" in metadata
     if (metaEnabled && metaData && Object.keys(metaData).some(key => metaData[key] !== undefined && (Array.isArray(metaData[key]) ? metaData[key].length > 0 : true))) {
       bpManifest.metadata = {...metaData, product_type: "addon"};
+    } else {
+      bpManifest.metadata = {product_type: "addon"};
     }
     if (scriptsEnabled) Array.from(document.querySelectorAll('.module-select')).forEach(select => select.value !== 'None' && bpManifest.dependencies.push({ module_name: select.dataset.module, version: select.value }));
     if (linkDeps && rpEnabled) bpManifest.dependencies.push({ uuid: rpUUID, version: versionParts });
