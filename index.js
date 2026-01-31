@@ -547,7 +547,7 @@ const generateManifest = () => {
       dependencies: [],
       subpacks: []
     };
-    if (metaEnabled && Object.keys(metaData).length > 0) {
+    if (metaEnabled && metaData && Object.keys(metaData).some(key => metaData[key] !== undefined && (Array.isArray(metaData[key]) ? metaData[key].length > 0 : true))) {
       bpManifest.metadata = {...metaData, product_type: "addon"};
     }
     if (scriptsEnabled) Array.from(document.querySelectorAll('.module-select')).forEach(select => select.value !== 'None' && bpManifest.dependencies.push({ module_name: select.dataset.module, version: select.value }));
