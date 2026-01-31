@@ -523,7 +523,7 @@ const generateManifest = () => {
     const engineParts = minEngineVersion.split('.').map(Number);
     const bpManifest = {
       format_version: 2,
-      metadata: {},
+      metadata: {"product_type":"addon"},
       header: {
         name: document.getElementById('bpName').value || 'My Behavior Pack',
         description: document.getElementById('bpDesc').value || 'My awesome behavior pack',
